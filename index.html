@@ -388,7 +388,10 @@
       if (!activeSet[item]) entries.push([item, counts[item]]);
     }
     entries.sort(function(a, b) { return b[1] - a[1]; });
-    return entries.slice(0, 5).map(function(e) { return e[0]; });
+    return {
+      top:  entries.slice(0, 5).map(function(e) { return e[0]; }),
+      rest: entries.slice(5).map(function(e) { return e[0]; })
+    };
   }
 
   function totalCount() {
@@ -495,6 +498,22 @@
   }
 
   // ---- Render ----
+  function buildChip(mealKey, item) {
+    return el('div', { class: 'chip' }, [
+      el('button', {
+        class: 'label',
+        text: item,
+        onclick: function() { promoteToActive(mealKey, item); }
+      }),
+      el('button', {
+        class: 'forget',
+        'aria-label': 'Forget ' + item,
+        text: '🗑',
+        onclick: function(e) { e.stopPropagation(); forgetItem(mealKey, item); }
+      })
+    ]);
+  }
+
   function render() {
     // Update count in header
     var n = totalCount();
@@ -560,30 +579,35 @@
       card.appendChild(activeList);
 
       // Suggestions
-      var suggestions = getSuggestions(meal.key);
-      if (suggestions.length > 0) {
+      var sug = getSuggestions(meal.key);
+      if (sug.top.length > 0 || sug.rest.length > 0) {
         card.appendChild(el('div', { class: 'divider' }));
-        var sugWrap = el('div', { class: 'suggestions' }, [
-          el('p', { class: 'suggestions-label', text: 'Ideas' })
-        ]);
-        var chips = el('div', { class: 'chips' });
-        suggestions.forEach(function(item) {
-          var chip = el('div', { class: 'chip' }, [
-            el('button', {
-              class: 'label',
-              text: item,
-              onclick: function() { promoteToActive(meal.key, item); }
-            }),
-            el('button', {
-              class: 'forget',
-              'aria-label': 'Forget ' + item,
-              text: '🗑',
-              onclick: function(e) { e.stopPropagation(); forgetItem(meal.key, item); }
-            })
-          ]);
-          chips.appendChild(chip);
-        });
-        sugWrap.appendChild(chips);
+        var sugWrap = el('div', { class: 'suggestions' });
+
+        // Top 5
+        if (sug.top.length > 0) {
+          sugWrap.appendChild(el('p', { class: 'suggestions-label', text: 'Top Ideas' }));
+          var topChips = el('div', { class: 'chips' });
+          sug.top.forEach(function(item) {
+            topChips.appendChild(buildChip(meal.key, item));
+          });
+          sugWrap.appendChild(topChips);
+        }
+
+        // Rest (older / less used)
+        if (sug.rest.length > 0) {
+          sugWrap.appendChild(el('p', {
+            class: 'suggestions-label',
+            text: 'More Ideas',
+            style: 'margin-top: 14px;'
+          }));
+          var restChips = el('div', { class: 'chips' });
+          sug.rest.forEach(function(item) {
+            restChips.appendChild(buildChip(meal.key, item));
+          });
+          sugWrap.appendChild(restChips);
+        }
+
         card.appendChild(sugWrap);
       }
 

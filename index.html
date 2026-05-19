@@ -161,6 +161,24 @@
 
   /* Suggestions */
   .suggestions { padding: 12px 16px; }
+  .suggestions-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 4px 0;
+    font-size: 11px;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-align: left;
+  }
+  .suggestions-toggle:active { color: #334155; }
+  .suggestions-toggle .caret {
+    font-size: 12px;
+    color: #94a3b8;
+  }
   .suggestions-label {
     font-size: 11px;
     font-weight: 600;
@@ -275,7 +293,7 @@
 
 <div class="container" id="mealsContainer"></div>
 
-<p class="hint">Tap an idea to add it. Tap a list item to put it back. Hit Share to send your list.</p>
+<p class="hint">Tap "Ideas" to show suggestions. Tap an idea to add it. Tap a list item to put it back.</p>
 
 <div class="toast" id="toast"></div>
 
@@ -316,6 +334,7 @@
   var history = { breakfast: {}, lunch: {}, dinner: {}, snacks: {} };
   var addingTo = null;
   var pendingShare = null;
+  var expanded = { breakfast: false, lunch: false, dinner: false, snacks: false };
 
   // ---- Load ----
   function load() {
@@ -388,10 +407,7 @@
       if (!activeSet[item]) entries.push([item, counts[item]]);
     }
     entries.sort(function(a, b) { return b[1] - a[1]; });
-    return {
-      top:  entries.slice(0, 5).map(function(e) { return e[0]; }),
-      rest: entries.slice(5).map(function(e) { return e[0]; })
-    };
+    return entries.map(function(e) { return e[0]; });
   }
 
   function totalCount() {
@@ -578,34 +594,31 @@
       }
       card.appendChild(activeList);
 
-      // Suggestions
+      // Suggestions (collapsible)
       var sug = getSuggestions(meal.key);
-      if (sug.top.length > 0 || sug.rest.length > 0) {
+      if (sug.length > 0) {
         card.appendChild(el('div', { class: 'divider' }));
         var sugWrap = el('div', { class: 'suggestions' });
 
-        // Top 5
-        if (sug.top.length > 0) {
-          sugWrap.appendChild(el('p', { class: 'suggestions-label', text: 'Top Ideas' }));
-          var topChips = el('div', { class: 'chips' });
-          sug.top.forEach(function(item) {
-            topChips.appendChild(buildChip(meal.key, item));
-          });
-          sugWrap.appendChild(topChips);
-        }
+        var isOpen = expanded[meal.key];
+        var toggleBtn = el('button', {
+          class: 'suggestions-toggle',
+          onclick: function() {
+            expanded[meal.key] = !expanded[meal.key];
+            render();
+          }
+        }, [
+          el('span', { text: 'Ideas (' + sug.length + ')' }),
+          el('span', { class: 'caret', text: isOpen ? '▾' : '▸' })
+        ]);
+        sugWrap.appendChild(toggleBtn);
 
-        // Rest (older / less used)
-        if (sug.rest.length > 0) {
-          sugWrap.appendChild(el('p', {
-            class: 'suggestions-label',
-            text: 'More Ideas',
-            style: 'margin-top: 14px;'
-          }));
-          var restChips = el('div', { class: 'chips' });
-          sug.rest.forEach(function(item) {
-            restChips.appendChild(buildChip(meal.key, item));
+        if (isOpen) {
+          var chips = el('div', { class: 'chips', style: 'margin-top: 8px;' });
+          sug.forEach(function(item) {
+            chips.appendChild(buildChip(meal.key, item));
           });
-          sugWrap.appendChild(restChips);
+          sugWrap.appendChild(chips);
         }
 
         card.appendChild(sugWrap);
